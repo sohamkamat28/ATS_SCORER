@@ -17,7 +17,7 @@ def _group_by_severity(issues: List[Dict[str, Any]]) -> Dict[str, List[Dict[str,
 
 
 def _render_issue(issue: Dict[str, Any]) -> None:
-    icon, text_color, bg_color = get_severity_style(issue.get("severity_level"))
+    severity_label, text_color, bg_color = get_severity_style(issue.get("severity_level"))
     title = issue.get("issue_title", "Untitled issue")
     impact = issue.get("ats_impact", "")
     explanation = issue.get("explanation", "")
@@ -28,9 +28,8 @@ def _render_issue(issue: Dict[str, Any]) -> None:
 
     st.markdown(
         f"""
-        <div style="border-left:4px solid {text_color}; background-color:{bg_color};
-                    padding:0.75rem 1rem; border-radius:6px; margin-bottom:0.5rem;">
-            <strong style="color:{text_color};">{icon} {title}</strong>
+        <div class="issue-banner" style="border-left-color:{text_color}; background-color:{bg_color};">
+            <strong style="color:{text_color};">{severity_label} · {title}</strong>
             <span style="color:#666; margin-left:0.5rem; font-size:0.85rem;">{impact}</span>
         </div>
         """,
@@ -58,7 +57,7 @@ def display_detailed_feedback(analysis: Dict[str, Any]) -> None:
     if not issues:
         return  # backend produced no per-issue feedback this run
 
-    st.markdown("### 🔍 Detailed Feedback")
+    st.markdown("### Detailed feedback")
     st.caption(f"{len(issues)} issue(s) flagged — grouped by severity.")
 
     grouped = _group_by_severity(issues)

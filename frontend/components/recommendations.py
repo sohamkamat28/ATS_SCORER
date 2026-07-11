@@ -8,6 +8,6 @@ def display_recommendations(analysis: Dict[str, Any]) -> None:
     if not suggestions:
         return
 
-    st.markdown("### 💡 Recommendations")
+    st.markdown("### Recommendations")
     for suggestion in suggestions:
         st.markdown(f"- {suggestion}")

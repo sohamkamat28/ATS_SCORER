@@ -8,10 +8,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Configure page
 st.set_page_config(
-    page_title="ATS Resume Scorer",
-    page_icon="🎯",
+    page_title="ResumeLens ATS",
+    page_icon=None,
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="auto"
 )
 
 # Auth state. Populated by Supabase sign-in / sign-up / OAuth.
@@ -62,35 +62,64 @@ st.markdown(load_css(), unsafe_allow_html=True)
 if 'current_view' not in st.session_state:
     st.session_state.current_view = 'landing'
 
+
+def _nav_button(label: str, view: str, icon: str) -> None:
+    """Render a sidebar navigation button with an active state."""
+    is_active = st.session_state.current_view == view
+    if st.button(
+        label,
+        key=f"nav_{view}",
+        use_container_width=True,
+        type="primary" if is_active else "tertiary",
+        icon=icon,
+    ):
+        st.session_state.current_view = view
+        st.rerun()
+
+
 # Sidebar navigation
 with st.sidebar:
-    st.markdown("## Navigation")
-    
-    if st.button("🏠 Home", use_container_width=True):
-        st.session_state.current_view = 'landing'
-        st.rerun()
-    
-    if st.button("🎯 ATS Scorer", use_container_width=True):
-        st.session_state.current_view = 'scorer'
-        st.rerun()
-    
-    if st.button("📊 History", use_container_width=True):
-        st.session_state.current_view = 'history'
-        st.rerun()
-    
-    if st.button("📚 Resources", use_container_width=True):
-        st.session_state.current_view = 'resources'
-        st.rerun()
-    
+    st.markdown(
+        """
+        <div class="sidebar-brand">
+            <div class="brand-mark">
+                <span>RL</span>
+            </div>
+            <div>
+                <div class="brand-name">ResumeLens</div>
+                <div class="brand-subtitle">ATS dashboard</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown('<div class="sidebar-section-label">Workspace</div>', unsafe_allow_html=True)
+
+    _nav_button("Home", "landing", ":material/home:")
+    _nav_button("Analyzer", "scorer", ":material/analytics:")
+    _nav_button("History", "history", ":material/history:")
+    _nav_button("Resources", "resources", ":material/menu_book:")
+
+    st.markdown(
+        """
+        <div class="sidebar-status-card">
+            <div class="status-orb"></div>
+            <p>Local analysis workspace</p>
+            <strong>Groq, PDF export, and fallback history are ready.</strong>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     st.markdown("---")
-    st.markdown("### 👤 Account")
+    st.markdown("### Account")
 
     from frontend.services import supabase_client
 
     if st.session_state.access_token:
         # Signed-in state: show email + sign-out button.
         st.caption(f"Signed in as **{st.session_state.user_email}**")
-        if st.button("Sign out", use_container_width=True):
+        if st.button("Sign out", use_container_width=True, icon=":material/logout:"):
             supabase_client.sign_out()
             for k in ("access_token", "refresh_token", "user_id", "user_email"):
                 st.session_state[k] = None

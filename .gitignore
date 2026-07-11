@@ -8,7 +8,21 @@ __pycache__/
 
 # Logs
 *.log
+logs/
+backend/data/
 
 # ML models
 *.safetensors
 *.pkl
+
+# Local secrets
+.env
+.env.*
+!.env.example
+frontend/.streamlit/secrets.toml
+
+# Local environments and caches
+venv/
+.venv/
+__pycache__/
+.pytest_cache/

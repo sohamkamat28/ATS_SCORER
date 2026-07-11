@@ -68,7 +68,7 @@ def _render_upload_area(analysis_mode: str):
     left, right = st.columns(2)
 
     with left:
-        st.markdown("### 📄 Upload Resume")
+        st.markdown("### Resume file")
         resume_file = st.file_uploader(
             "Choose your resume file",
             type=["pdf", "doc", "docx"],
@@ -76,14 +76,14 @@ def _render_upload_area(analysis_mode: str):
             key="resume_upload",
         )
         if resume_file:
-            st.success(f"✅ {resume_file.name} ({resume_file.size / 1024:.1f} KB)")
+            st.success(f"{resume_file.name} ({resume_file.size / 1024:.1f} KB) is ready")
 
     jd_file: Optional[object] = None
     jd_text = ""
 
     with right:
         if analysis_mode == "Job Description Comparison":
-            st.markdown("### 📋 Job Description")
+            st.markdown("### Job description")
             jd_method = st.radio(
                 "Input method:",
                 ["Paste Text", "Upload .txt File"],
@@ -97,7 +97,7 @@ def _render_upload_area(analysis_mode: str):
                     key="jd_upload",
                 )
                 if jd_file:
-                    st.success(f"✅ {jd_file.name}")
+                    st.success(f"{jd_file.name} is ready")
             else:
                 jd_text = st.text_area(
                     "Paste job description text:",
@@ -106,21 +106,21 @@ def _render_upload_area(analysis_mode: str):
                     key="jd_text",
                 )
                 if jd_text:
-                    st.success(f"✅ {len(jd_text)} characters")
+                    st.success(f"{len(jd_text)} characters captured")
         else:
-            st.markdown("### 📋 Job Description")
+            st.markdown("### Job description")
             st.info("Switch to 'Job Description Comparison' mode to enable JD matching.")
 
     return resume_file, jd_file, jd_text
 
 
 def _render_export_buttons(analysis: dict) -> None:
-    st.markdown("### 📥 Export Results")
+    st.markdown("### Export results")
     c1, c2 = st.columns(2)
 
     with c1:
         # Lazy: only call the backend the first time the user clicks expand.
-        if st.button("📑 Generate PDF Report", use_container_width=True, type="primary"):
+        if st.button("Generate PDF report", use_container_width=True, type="primary"):
             try:
                 with st.spinner("Generating PDF on backend..."):
                     pdf_bytes = api_client.generate_pdf(
@@ -133,7 +133,7 @@ def _render_export_buttons(analysis: dict) -> None:
 
         if "scorer_pdf_bytes" in st.session_state:
             st.download_button(
-                "⬇️ Download PDF",
+                "Download PDF",
                 data=st.session_state["scorer_pdf_bytes"],
                 file_name="ats_resume_report.pdf",
                 mime="application/pdf",
@@ -143,7 +143,7 @@ def _render_export_buttons(analysis: dict) -> None:
 
     with c2:
         st.download_button(
-            "📄 Download Summary (.txt)",
+            "Download summary (.txt)",
             data=_summary_text(analysis),
             file_name="ats_summary.txt",
             mime="text/plain",
@@ -153,12 +153,20 @@ def _render_export_buttons(analysis: dict) -> None:
 
 
 def render() -> None:
-    st.title("🎯 ATS Resume Scorer")
-    st.markdown("Upload your resume — and optionally a job description — for a comprehensive analysis.")
+    st.markdown(
+        """
+        <div class="page-heading">
+            <div class="eyebrow">Analyzer</div>
+            <h1>Resume scoring workspace</h1>
+            <p>Upload a resume, add role context when available, and review a structured ATS readiness report.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     with st.sidebar:
         st.markdown("---")
-        st.markdown("## 📊 Analysis Options")
+        st.markdown("## Analysis options")
         st.info(
             "**General ATS Score**: resume only — overall compatibility.\n\n"
             "**JD Comparison**: resume + job description — targeted match analysis."
@@ -179,7 +187,7 @@ def render() -> None:
     st.markdown("---")
 
     if not resume_file:
-        st.info("👆 Upload your resume to begin.")
+        st.info("Upload your resume to begin.")
         # If we have a prior result in session, render it again.
         if st.session_state.get("scorer_analysis"):
             display_results_dashboard(st.session_state["scorer_analysis"])
@@ -187,12 +195,12 @@ def render() -> None:
 
     access_token = st.session_state.get("access_token")
     if not access_token:
-        st.warning("⚠️ Sign in from the sidebar to analyze a resume.")
+        st.warning("Sign in from the sidebar to analyze a resume.")
         return
 
     _, mid, _ = st.columns([1, 2, 1])
     with mid:
-        analyze = st.button("🚀 Analyze Resume", use_container_width=True, type="primary")
+        analyze = st.button("Analyze resume", use_container_width=True, type="primary")
 
     if not analyze:
         # Re-show previous result on rerun (e.g. after PDF generation).
@@ -219,6 +227,6 @@ def render() -> None:
         return
 
     st.session_state["scorer_analysis"] = analysis
-    st.success("✅ Analysis complete!")
+    st.success("Analysis complete")
     display_results_dashboard(analysis)
     _render_export_buttons(analysis)

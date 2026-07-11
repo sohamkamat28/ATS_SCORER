@@ -4,17 +4,25 @@ import streamlit as st
 def render():
     """Render the resources page"""
     
-    st.title("📚 Resources & Tips")
-    st.markdown("Learn how to optimize your resume for ATS systems")
+    st.markdown(
+        """
+        <div class="page-heading">
+            <div class="eyebrow">Resources</div>
+            <h1>ATS resume standards</h1>
+            <p>Practical guidance for building resumes that parse cleanly and match role requirements.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     
     # ATS Tips
-    st.markdown("## 🎯 ATS Optimization Tips")
+    st.markdown("## ATS optimization checklist")
     
     col1, col2 = st.columns(2)
     
     with col1:
         st.markdown("""
-        ### ✅ Do's
+        ### Do
         - Use standard section headings
         - Include relevant keywords from job description
         - Use simple, clean formatting
@@ -26,7 +34,7 @@ def render():
     
     with col2:
         st.markdown("""
-        ### ❌ Don'ts
+        ### Avoid
         - Avoid tables and text boxes
         - Don't use headers/footers for important info
         - Avoid images and graphics
@@ -39,9 +47,9 @@ def render():
     st.markdown("---")
     
     # Common ATS Keywords
-    st.markdown("## 🔑 Common ATS Keywords by Industry")
+    st.markdown("## Common ATS keywords by industry")
     
-    tab1, tab2, tab3 = st.tabs(["💻 Tech", "💼 Business", "🎨 Creative"])
+    tab1, tab2, tab3 = st.tabs(["Technology", "Business", "Creative"])
     
     with tab1:
         st.markdown("""
@@ -75,5 +83,5 @@ def render():
     st.markdown("---")
     
     # Resume Templates
-    st.markdown("## 📄 ATS-Friendly Resume Templates")
+    st.markdown("## ATS-friendly resume templates")
     st.info("Coming soon: Downloadable ATS-optimized resume templates")

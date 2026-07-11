@@ -3,7 +3,7 @@ import streamlit as st
 
 
 def display_strengths(strengths: List[str]) -> None:
-    st.markdown("### 💪 Strengths")
+    st.markdown("### Strengths")
     if not strengths:
         st.info("Keep improving your resume to unlock strengths!")
         return
@@ -16,11 +16,11 @@ def display_critical_issues(analysis: Dict[str, Any]) -> None:
     summary = analysis.get("issues_summary") or []
 
     if not critical and not summary:
-        st.success("### ✅ No Critical Issues Found!")
+        st.success("### No critical issues found")
         st.markdown("Your resume doesn't have any urgent issues. Nice work.")
         return
 
-    st.markdown("### 🚨 Critical Issues")
+    st.markdown("### Critical issues")
     st.error("These issues should be addressed first for better ATS performance.")
 
     for item in critical:
@@ -28,6 +28,6 @@ def display_critical_issues(analysis: Dict[str, Any]) -> None:
 
     extra = [s for s in summary if s not in critical]
     if extra:
-        with st.expander("📋 Additional flagged items", expanded=False):
+        with st.expander("Additional flagged items", expanded=False):
             for item in extra:
                 st.markdown(f"- {item}")

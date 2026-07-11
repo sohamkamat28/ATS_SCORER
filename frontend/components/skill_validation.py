@@ -10,7 +10,7 @@ def display_skill_validation(analysis: Dict[str, Any]) -> None:
     total = details.get("total", len(validated) + len(unvalidated))
     pct = details.get("validation_pct", 0.0)
 
-    st.markdown("### ✅ Skill Validation")
+    st.markdown("### Skill validation")
 
     if total == 0:
         st.info("No skills detected on the resume.")
@@ -24,7 +24,7 @@ def display_skill_validation(analysis: Dict[str, Any]) -> None:
     st.progress(min(max(pct / 100.0, 0.0), 1.0))
 
     if validated:
-        with st.expander(f"✅ Validated skills ({len(validated)})", expanded=False):
+        with st.expander(f"Validated skills ({len(validated)})", expanded=False):
             for entry in validated:
                 skill = entry.get("skill", "?")
                 projects = entry.get("projects", []) or []
@@ -35,7 +35,7 @@ def display_skill_validation(analysis: Dict[str, Any]) -> None:
                 st.markdown(f"- **{skill}**{sim_text} — demonstrated in: {project_text}")
 
     if unvalidated:
-        with st.expander(f"⚠️ Unvalidated skills ({len(unvalidated)})", expanded=False):
+        with st.expander(f"Unvalidated skills ({len(unvalidated)})", expanded=False):
             st.caption("These skills are listed but not tied to a project or experience bullet.")
             for skill in unvalidated:
-                st.markdown(f"- ❌ {skill}")
+                st.markdown(f"- {skill}")

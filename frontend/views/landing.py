@@ -2,98 +2,118 @@ import streamlit as st
 
 
 def render():
-    
-    # Landing page CSS
-    st.markdown("""
-    <style>
-        .main-header {
-            text-align: center;
-            padding: 3rem 2rem;
-            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #9333EA 100%);
-            color: white;
-            border-radius: 16px;
-            margin-bottom: 2rem;
-            box-shadow: 0 10px 40px rgba(79, 70, 229, 0.3);
-        }
-        .main-header h1 {
-            font-size: 2.8rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Hero Section
-    st.markdown("""
-    <div class="main-header">
-        <h1>🎯 ATS Resume Scorer</h1>
-        <h3>Optimize Your Resume for Applicant Tracking Systems</h3>
-        <p>Get instant feedback on your resume's ATS compatibility with AI-powered analysis</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Call-to-Action Button
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button("🚀 Start Analyzing Your Resume", use_container_width=True, type="primary"):
-            st.session_state.current_view = 'scorer'
+    st.html(
+        """
+        <section class="home-hero-shell">
+            <div class="home-breadcrumb">ResumeLens / ATS resume analyzer</div>
+            <div class="home-hero">
+                <h1>The resume analyzer that turns applications into interviews</h1>
+                <p>
+                    Upload a resume, compare it against a role, and get a clean,
+                    evidence-based report for ATS fit, keywords, structure, and skill proof.
+                </p>
+            </div>
+        </section>
+        """
+    )
+
+    left, middle, right = st.columns([1.1, 1, 1.1])
+    with middle:
+        if st.button(
+            "Analyze my resume",
+            use_container_width=True,
+            type="primary",
+            icon=":material/arrow_forward:",
+        ):
+            st.session_state.current_view = "scorer"
             st.rerun()
-    
-    st.markdown("---")
-    
-    # Features Overview
-    st.markdown("## ✨ Key Features")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown("""
-        ### 📊 Comprehensive Scoring
-        Get detailed scores across 5 key dimensions:
-        - Formatting (20%)
-        - Keywords & Skills (25%)
-        - Content Quality (25%)
-        - Skill Validation (15%)
-        - ATS Compatibility (15%)
-        """)
-    
-    with col2:
-        st.markdown("""
-        ### 🔍 Skill Validation
-        Verify that your claimed skills are demonstrated in your projects and experience using AI-powered semantic analysis.
-        
-        **No more empty claims!**
-        """)
-    
-    with col3:
-        st.markdown("""
-        ### 🔒 Privacy First
-        All analysis runs locally with no external API calls. Your resume data never leaves your system.
-        
-        **100% Private & Secure**
-        """)
-    
-    st.markdown("---")
-    
-    # How It Works
-    st.markdown("## 🚀 How It Works")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown("""
-        #### 1️⃣ Upload Your Resume
-        Support for PDF, DOC, and DOCX formats
-        """)
-    
-    with col2:
-        st.markdown("""
-        #### 2️⃣ AI Analysis
-        Our local AI models analyze your resume across multiple dimensions
-        """)
-    
-    with col3:
-        st.markdown("""
-        #### 3️⃣ Get Actionable Feedback
-        Receive detailed recommendations to improve your resume
-        """)
+
+    st.html(
+        """
+        <section class="builder-stage" aria-label="Animated ATS analysis preview">
+            <div class="stage-card builder-card">
+                <div class="stage-status">
+                    <span class="status-dot"></span>
+                    Saved locally
+                </div>
+                <div class="progress-rail">
+                    <div class="progress-step complete">1</div>
+                    <div class="progress-step active">2</div>
+                    <div class="progress-step">3</div>
+                    <div class="progress-step">4</div>
+                </div>
+                <h2>Tell us what role you want</h2>
+                <p>ResumeLens compares your resume against the job description and highlights the gaps that matter.</p>
+                <div class="field-grid">
+                    <div class="field">
+                        <span>Target role</span>
+                        <strong>Product analyst</strong>
+                    </div>
+                    <div class="field">
+                        <span>Seniority</span>
+                        <strong>Mid level</strong>
+                    </div>
+                </div>
+                <div class="keyword-stream">
+                    <span>SQL</span>
+                    <span>Experimentation</span>
+                    <span>Stakeholder reporting</span>
+                    <span>Dashboards</span>
+                </div>
+            </div>
+
+            <div class="stage-card report-card">
+                <div class="report-toolbar">
+                    <span>ATS report</span>
+                    <label>Sample</label>
+                </div>
+                <div class="resume-paper">
+                    <div class="scan-line"></div>
+                    <div class="paper-name">Maya Shah</div>
+                    <div class="paper-role">Product analyst</div>
+                    <div class="paper-line long"></div>
+                    <div class="paper-line"></div>
+                    <div class="paper-line medium"></div>
+                    <div class="paper-section">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+                <div class="loop-panel">
+                    <div class="loop-slide slide-one">
+                        <span>ATS score</span>
+                        <strong>84</strong>
+                        <p>Strong structure with role-ready experience.</p>
+                    </div>
+                    <div class="loop-slide slide-two">
+                        <span>Keyword coverage</span>
+                        <strong>76%</strong>
+                        <p>Missing analytics, funnel, and cohort language.</p>
+                    </div>
+                    <div class="loop-slide slide-three">
+                        <span>Next action</span>
+                        <strong>3 fixes</strong>
+                        <p>Add metrics, mirror title language, tighten bullets.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="home-proof-grid">
+            <article>
+                <span>01</span>
+                <h3>Parse cleanly</h3>
+                <p>Checks sections, links, formatting, and ATS-readable structure.</p>
+            </article>
+            <article>
+                <span>02</span>
+                <h3>Match the role</h3>
+                <p>Compares language, required skills, semantic fit, and missing terms.</p>
+            </article>
+            <article>
+                <span>03</span>
+                <h3>Export the report</h3>
+                <p>Turns the analysis into a polished PDF you can review or share.</p>
+            </article>
+        </section>
+        """
+    )

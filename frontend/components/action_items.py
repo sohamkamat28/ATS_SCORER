@@ -29,9 +29,9 @@ def display_action_items(analysis: Dict[str, Any]) -> None:
     if not items:
         return
 
-    st.markdown("### ⚡ Action Items")
+    st.markdown("### Action items")
     st.caption("Concrete steps to improve your score, sorted by urgency.")
 
     for level, source, action in items:
-        icon = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🟢"}.get(level, "🟢")
-        st.markdown(f"- {icon} **[{source}]** {action}")
+        label = {"critical": "Critical", "high": "High", "medium": "Medium", "low": "Low"}.get(level, "Low")
+        st.markdown(f"- **{label} / {source}** {action}")

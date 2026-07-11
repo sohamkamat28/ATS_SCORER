@@ -1,7 +1,9 @@
 import os
 import logging
+import time
 from pathlib import Path
 from typing import Any, Dict
+import jwt
 import streamlit as st
 from supabase import Client, create_client
 
@@ -28,6 +30,11 @@ def _secret(key: str, section: str = 'supabase') -> str:
 
 SUPABASE_URL = _secret('SUPABASE_URL')
 SUPABASE_ANON_KEY = _secret('SUPABASE_ANON_KEY')
+SUPABASE_JWT_SECRET = _secret('SUPABASE_JWT_SECRET')
+
+DEV_AUTH_EMAIL = os.getenv('DEV_AUTH_EMAIL', '')
+DEV_AUTH_PASSWORD = os.getenv('DEV_AUTH_PASSWORD', '')
+DEV_AUTH_USER_ID = os.getenv('DEV_AUTH_USER_ID', '')
 
 OAUTH_REDIRECT_URL = (
     os.getenv('AUTH_REDIRECT_URL')
@@ -59,7 +66,41 @@ def _session_dict(session, user) -> Dict[str, Any]:
     }
 
 
+def _dev_session(email: str) -> Dict[str, Any] | None:
+    if not (SUPABASE_URL and SUPABASE_JWT_SECRET and DEV_AUTH_USER_ID):
+        return None
+
+    now = int(time.time())
+    access_token = jwt.encode(
+        {
+            'iss': f"{SUPABASE_URL.rstrip('/')}/auth/v1",
+            'sub': DEV_AUTH_USER_ID,
+            'aud': 'authenticated',
+            'role': 'authenticated',
+            'email': email,
+            'iat': now,
+            'exp': now + 24 * 60 * 60,
+        },
+        SUPABASE_JWT_SECRET,
+        algorithm='HS256',
+    )
+    return {
+        'access_token': access_token,
+        'refresh_token': 'local-dev-refresh-token',
+        'user_id': DEV_AUTH_USER_ID,
+        'email': email,
+    }
+
+
 def sign_in_with_password(email: str, password: str) -> Dict[str, Any]:
+    if DEV_AUTH_EMAIL and DEV_AUTH_PASSWORD:
+        if email.strip().lower() == DEV_AUTH_EMAIL.lower() and password == DEV_AUTH_PASSWORD:
+            session = _dev_session(DEV_AUTH_EMAIL)
+            if session:
+                return session
+        if email.strip().lower() == DEV_AUTH_EMAIL.lower():
+            return {'error': 'Wrong email or password'}
+
     err = _missing_config()
     if err:
         return {'error': err}
