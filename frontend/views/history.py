@@ -26,10 +26,6 @@ def render() -> None:
     )
 
     access_token = st.session_state.get("access_token")
-    if not access_token:
-        st.warning("Sign in from the sidebar to view your history.")
-        return
-
     try:
         history = api_client.get_history(access_token)
     except requests.RequestException as exc:

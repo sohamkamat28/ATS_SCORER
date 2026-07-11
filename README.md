@@ -100,3 +100,34 @@ The app opens at `http://localhost:8501`.
 - The first run downloads the Sentence Transformer model (~80 MB). It's cached afterwards.
 - If you don't have a Groq key yet, the scoring still works — only the LLM suggestions section will be empty.
 - `jupyter notebooks/` and `ml model/` are for experimentation and aren't required to run the app.
+
+## Production deployment
+
+The production architecture is intentionally isolated from the original Streamlit app:
+
+- `web/` is the Next.js frontend deployed to Vercel.
+- `backend/` is the FastAPI service deployed to Render Free using `render.yaml`.
+- Supabase provides authentication and analysis history for both interfaces.
+- The original `frontend/` Streamlit app remains available for local use.
+
+### Vercel frontend
+
+Create a Vercel project with `web` as its Root Directory and add:
+
+```text
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+NEXT_PUBLIC_API_URL
+```
+
+Set `NEXT_PUBLIC_API_URL` to the public Render service URL without a trailing slash.
+
+### Render backend
+
+Create a Render Blueprint from the repository's `render.yaml`. During initial setup,
+provide the prompted secret values and set `FRONTEND_URL` to the Vercel production URL.
+The Render-specific dependency file excludes PyTorch and native PDF libraries so the API
+remains within free-tier memory and build constraints.
+
+After both services are live, add the Vercel URL to Supabase Authentication's Site URL
+and Redirect URLs. Future pushes to `main` update each service independently.

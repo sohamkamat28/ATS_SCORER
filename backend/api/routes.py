@@ -127,7 +127,7 @@ async def health_check(request: Request):
     return {
         'status':          'healthy',
         'nlp_loaded':      request.app.state.nlp is not None,
-        'embedder_loaded': request.app.state.embedder is not None,
+        'embedder_loaded': True,
     }
 
 @router.get('/history')

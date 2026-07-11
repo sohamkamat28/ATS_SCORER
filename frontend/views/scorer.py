@@ -194,9 +194,6 @@ def render() -> None:
         return
 
     access_token = st.session_state.get("access_token")
-    if not access_token:
-        st.warning("Sign in from the sidebar to analyze a resume.")
-        return
 
     _, mid, _ = st.columns([1, 2, 1])
     with mid:

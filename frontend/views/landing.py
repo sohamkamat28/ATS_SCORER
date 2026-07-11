@@ -1,7 +1,33 @@
 import streamlit as st
 
+from frontend.services import supabase_client
+
 
 def render():
+    account_copy, account_action = st.columns([4, 1.2], vertical_alignment="center")
+    with account_copy:
+        if st.session_state.access_token:
+            st.markdown(
+                f'<div class="home-account"><span>Signed in</span><strong>{st.session_state.user_email}</strong></div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                '<div class="home-account"><span>Your workspace</span><strong>Sign in to save reports and history</strong></div>',
+                unsafe_allow_html=True,
+            )
+    with account_action:
+        if st.session_state.access_token:
+            if st.button("Sign out", icon=":material/logout:", use_container_width=True):
+                supabase_client.sign_out()
+                for key in ("access_token", "refresh_token", "user_id", "user_email"):
+                    st.session_state[key] = None
+                st.rerun()
+        elif st.button("Sign in", icon=":material/login:", use_container_width=True, type="primary"):
+            st.session_state.current_view = "auth"
+            st.session_state.auth_return_view = "landing"
+            st.rerun()
+
     st.html(
         """
         <section class="home-hero-shell">
@@ -25,7 +51,9 @@ def render():
             type="primary",
             icon=":material/arrow_forward:",
         ):
-            st.session_state.current_view = "scorer"
+            st.session_state.current_view = "scorer" if st.session_state.access_token else "auth"
+            if not st.session_state.access_token:
+                st.session_state.auth_return_view = "scorer"
             st.rerun()
 
     st.html(

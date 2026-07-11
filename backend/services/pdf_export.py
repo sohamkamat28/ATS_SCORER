@@ -1,31 +1,42 @@
 import io
-import logging
 
-try:
-    from weasyprint import HTML, CSS
-    WEASYPRINT_INSTALLED = True
-except ImportError:
-    WEASYPRINT_INSTALLED = False
+from bs4 import BeautifulSoup
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer
 
-logger = logging.getLogger('ats_resume_scorer')
 
 def generate_combined_pdf(html_docs: dict[str, str]) -> bytes:
-    if not WEASYPRINT_INSTALLED:
-        raise ImportError("WeasyPrint is not installed. PDF generation unavailable.")
-        
-    documents = []
-    
-    # Render all 3 HTML strings to WeasyPrint Document objects
-    for name, html_str in html_docs.items():
-        doc = HTML(string=html_str).render()
-        documents.append(doc)
-    
-    # Merge them into the first document
-    first_doc = documents[0]
-    for other_doc in documents[1:]:
-        for page in other_doc.pages:
-            first_doc.pages.append(page)
-            
-    # Write combined PDF bytes
-    pdf_bytes = first_doc.write_pdf()
-    return pdf_bytes
+    """Render report HTML as a portable PDF without native system libraries."""
+    output = io.BytesIO()
+    document = SimpleDocTemplate(
+        output,
+        pagesize=A4,
+        rightMargin=18 * mm,
+        leftMargin=18 * mm,
+        topMargin=18 * mm,
+        bottomMargin=18 * mm,
+        title="ResumeLens ATS Report",
+    )
+    styles = getSampleStyleSheet()
+    styles["Title"].textColor = colors.HexColor("#006D66")
+    story = []
+
+    for index, (name, html) in enumerate(html_docs.items()):
+        if index:
+            story.append(PageBreak())
+        story.append(Paragraph(name.replace("_", " ").title(), styles["Title"]))
+        story.append(Spacer(1, 6 * mm))
+        soup = BeautifulSoup(html, "html.parser")
+        for element in soup.find_all(["h1", "h2", "h3", "p", "li"]):
+            value = element.get_text(" ", strip=True)
+            if not value:
+                continue
+            style = styles["Heading2"] if element.name in {"h1", "h2", "h3"} else styles["BodyText"]
+            story.append(Paragraph(value, style))
+            story.append(Spacer(1, 2.2 * mm))
+
+    document.build(story)
+    return output.getvalue()

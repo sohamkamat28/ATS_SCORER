@@ -29,10 +29,9 @@ async def lifespan(app:FastAPI):
         app.state.nlp = spacy.load(SPACY_MODEL_SECONDARY)
         logger.info(f'Loaded {SPACY_MODEL_SECONDARY} (fallback)')
 
-    logger.info(f'Loading SentenceTransformer: {SENTENCE_TRANSFORMER_MODEL}')
-    from sentence_transformers import SentenceTransformer
-    app.state.embedder = SentenceTransformer(SENTENCE_TRANSFORMER_MODEL)
-    logger.info(f'Loaded {SENTENCE_TRANSFORMER_MODEL}')
+    # Keep startup within Render Free's memory limit. Matching uses the
+    # lightweight deterministic scorer in jd_matcher instead of PyTorch.
+    app.state.embedder = None
 
     logger.info('All models loaded. API is ready to serve requests.')
 
@@ -52,6 +51,7 @@ app=FastAPI(
 app.add_middleware(
     CORSMiddleware, 
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True, 
     allow_methods     = ['*'],
     allow_headers     = ['*'],

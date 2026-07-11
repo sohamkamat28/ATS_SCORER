@@ -1,6 +1,6 @@
 import io
-import magic
-from typing import Tuple, Optional, Tuple
+from pathlib import Path
+from typing import Optional, Tuple
 
 import pdfplumber
 from docx import Document
@@ -40,10 +40,16 @@ def validate_file(file_data:bytes, filename:str)->Tuple[bool, str, Optional[str]
     if file_size_bytes==0:
         return False, 'Uploaded file is empty. Please check the file and try again.', None
     
-    try:
-        mime_type=magic.from_buffer(file_data, mime=True)
-    except Exception as e:
-        return False, f"error deteminin the file type : {e}", None
+    extension = Path(filename).suffix.lower()
+    signatures = {
+        '.pdf': (b'%PDF', 'application/pdf'),
+        '.docx': (b'PK', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+        '.doc': (bytes.fromhex('D0CF11E0'), 'application/msword'),
+    }
+    expected = signatures.get(extension)
+    if not expected or not file_data.startswith(expected[0]):
+        return False, 'The uploaded file does not match a supported PDF, DOC, or DOCX format.', None
+    mime_type = expected[1]
     
     if mime_type not in SUPPORTED_MIME_TYPES:
         supported=', '.join(SUPPORTED_MIME_TYPES.keys()).upper()

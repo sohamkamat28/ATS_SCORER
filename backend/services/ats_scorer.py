@@ -1,8 +1,7 @@
 import re
 import spacy
-import numpy as np
-from sentence_transformers import SentenceTransformer
-from typing import Dict, List, Optional, Tuple
+from rapidfuzz import fuzz
+from typing import Any, Dict, List, Optional, Tuple
 
 from backend.utils.file_utils import log_warning
 from backend.core.config import SENTENCE_TRANSFORMER_MODEL
@@ -72,24 +71,13 @@ def detect_location_info(text: str, nlp: spacy.Language) -> Dict:
         'penalty_applied':    penalty,
     }
 
-def _calculate_semantic_similarity(skill: str, text: str, embedder: SentenceTransformer) -> float:
-    #similarity = (A · B) / (|A| × |B|)
+def _calculate_semantic_similarity(skill: str, text: str, embedder: Any = None) -> float:
+    """Lightweight similarity suitable for memory-constrained deployments."""
     if not skill or not text:
         return 0.0
-    try:
-        skill_vec  = embedder.encode(skill, convert_to_tensor=False)
-        text_vec   = embedder.encode(text,  convert_to_tensor=False)
+    return fuzz.token_set_ratio(skill.lower(), text.lower()) / 100.0
 
-        similarity = np.dot(skill_vec, text_vec) / (
-            np.linalg.norm(skill_vec) * np.linalg.norm(text_vec)
-        )
-
-        return float(max(0.0, min(1.0, similarity)))
-    except Exception as e:
-        log_warning(f"Similarity error for '{skill}': {e}", context='ats_scorer')
-        return 0.0
-
-def _skill_matches(skill: str, text: str, embedder: SentenceTransformer, threshold: float) -> Tuple[bool, float]:
+def _skill_matches(skill: str, text: str, embedder: Any, threshold: float) -> Tuple[bool, float]:
 
     #fast, o(n) directly check if skill is a substring of the text (case-insensitive)
     if skill.lower() in text.lower():
@@ -104,7 +92,7 @@ def validate_skills_with_projects(
     skills: List[str],
     projects: List[Dict],
     experience_entries: List[Dict],
-    embedder: SentenceTransformer,
+    embedder: Any,
     threshold: float = 0.6,
 ) -> Dict:
     

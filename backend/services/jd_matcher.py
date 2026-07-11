@@ -1,27 +1,16 @@
-from typing import List, Dict
-import numpy as np
+from typing import Any, List, Dict
 import spacy
-from sentence_transformers import SentenceTransformer
-
-from typing import List, Dict
-import numpy as np
-import spacy
-from sentence_transformers import SentenceTransformer
 
 from backend.utils.matching import fuzzy_match_keywords, normalize_skill
 from rapidfuzz import fuzz
 
 
 def calculate_semantic_similarity(
-    resume_text: str, jd_text: str, embedder: SentenceTransformer
+    resume_text: str, jd_text: str, embedder: Any = None
 ) -> float:
-    resume_emb = embedder.encode(resume_text[:5000], convert_to_tensor=False)
-    jd_emb     = embedder.encode(jd_text[:5000], convert_to_tensor=False)
-
-    similarity = np.dot(resume_emb, jd_emb) / (
-        np.linalg.norm(resume_emb) * np.linalg.norm(jd_emb)
-    )
-    return float(np.clip(similarity, 0.0, 1.0))
+    if not resume_text or not jd_text:
+        return 0.0
+    return fuzz.token_set_ratio(resume_text[:5000].lower(), jd_text[:5000].lower()) / 100.0
 
 
 def identify_matched_keywords(
@@ -86,7 +75,7 @@ def calculate_match_percentage(
     matched = identify_matched_keywords(resume_keywords, jd_keywords)
     keyword_overlap = len(matched) / len(jd_keywords)
     match_pct = (keyword_overlap * 0.6 + semantic_similarity * 0.4) * 100
-    return float(np.clip(match_pct, 0.0, 100.0))
+    return float(max(0.0, min(100.0, match_pct)))
 
 
 def compare_resume_with_jd(
@@ -95,7 +84,7 @@ def compare_resume_with_jd(
     resume_skills: List[str],
     jd_text: str,
     jd_keywords: List[str],
-    embedder: SentenceTransformer,
+    embedder: Any,
     nlp: spacy.Language,
 ) -> Dict:
     semantic_similarity = calculate_semantic_similarity(resume_text, jd_text, embedder)

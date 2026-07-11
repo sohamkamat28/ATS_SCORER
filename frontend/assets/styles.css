@@ -2993,3 +2993,103 @@ div[data-testid="stExpander"] {
     border-color: transparent !important;
     color: var(--primary-dark) !important;
 }
+
+/* Home account controls and dedicated authentication view */
+.home-account {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 2.75rem;
+    color: var(--text-primary);
+}
+
+.home-account span {
+    padding: 0.3rem 0.55rem;
+    border-radius: 6px;
+    background: var(--surface-blue);
+    color: var(--primary-dark);
+    font-size: 0.75rem;
+    font-weight: 750;
+}
+
+.home-account strong {
+    overflow: hidden;
+    font-size: 0.9rem;
+    font-weight: 620;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.auth-heading {
+    max-width: 34rem;
+    margin: 1.5rem auto 1.25rem;
+    text-align: center;
+}
+
+.auth-brand-mark {
+    display: grid;
+    width: 3.25rem;
+    height: 3.25rem;
+    margin: 0 auto 1.25rem;
+    place-items: center;
+    border-radius: 12px;
+    background: var(--primary-color);
+    box-shadow: 0 14px 30px rgba(0, 109, 102, 0.2);
+    color: #ffffff;
+    font-size: 0.88rem;
+    font-weight: 850;
+}
+
+.auth-heading h1 {
+    margin: 0.45rem 0 0;
+    color: var(--text-primary);
+    font-size: 2.6rem;
+    line-height: 1.08;
+    text-wrap: balance;
+}
+
+.auth-heading p {
+    max-width: 30rem;
+    margin: 0.85rem auto 0;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    text-wrap: pretty;
+}
+
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin: 1rem 0;
+    color: #94a3b8;
+    font-size: 0.78rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    height: 1px;
+    flex: 1;
+    background: var(--border-light);
+    content: "";
+}
+
+@media (max-width: 760px) {
+    .home-account {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    .home-account strong {
+        max-width: 100%;
+        white-space: normal;
+    }
+
+    .auth-heading {
+        margin-top: 0.5rem;
+    }
+
+    .auth-heading h1 {
+        font-size: 2.15rem;
+    }
+}
