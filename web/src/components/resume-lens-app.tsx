@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
-  ArrowLeft, ArrowRight, BarChart3, BookOpen, Check, ChevronRight, Clock3,
-  Download, FileSearch, History, Home, LoaderCircle, LogIn, LogOut, Menu,
-  Trash2, UploadCloud, X,
+  ArrowLeft, ArrowRight, Award, BarChart3, BookOpen, Check,
+  Clock3, Download, FileSearch, History, Home, Lightbulb, LoaderCircle,
+  LogIn, LogOut, Menu, Trash2, UploadCloud, X,
 } from "lucide-react";
 import { analyzeResume, deleteHistory, downloadReport, getHistory, type Analysis } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
@@ -118,14 +118,116 @@ function AnalyzerView({ token }: { token: string }) {
 function Results({ analysis, onDownload }: { analysis: Analysis; onDownload: () => void }) {
   const score = Math.round(analysis.ATS_score ?? analysis.ats_score);
   const labels: Record<string, string> = { formatting: "Formatting", keywords: "Keywords", content: "Content", skill_validation: "Skill validation", ats_compatibility: "ATS compatibility" };
+  const descriptions: Record<string, string> = { formatting: "Structure, sections, and readable layout", keywords: "Role language and relevant terminology", content: "Action verbs, outcomes, and measurable work", skill_validation: "Skills supported by project or work evidence", ats_compatibility: "Parsing safety and conventional formatting" };
   const max: Record<string, number> = { formatting: 20, keywords: 25, content: 25, skill_validation: 15, ats_compatibility: 15 };
-  return <section className="results"><div className="result-summary"><div className="score-ring" style={{ "--score": `${score * 3.6}deg` } as React.CSSProperties}><span><strong>{score}</strong><small>/ 100</small></span></div><div><p className="eyebrow">ATS readiness</p><h2>{score >= 80 ? "Strong foundation" : score >= 60 ? "Competitive with focused edits" : "Needs focused revision"}</h2><p>{analysis.interpretation || "Review the score breakdown and address the highest-impact recommendations first."}</p></div><button className="button secondary" onClick={onDownload}><Download /> Download PDF</button></div><div className="metrics-grid">{Object.entries(analysis.component_scores).map(([key, value]) => <article key={key}><span>{labels[key] || key}</span><strong>{Math.round(value)}<small> / {max[key] || 100}</small></strong><div><i style={{ width: `${Math.min(100, value / (max[key] || 100) * 100)}%` }} /></div></article>)}</div>{analysis.jd_match_analysis && <div className="jd-panel"><div><p className="eyebrow">Role match</p><strong>{Math.round(analysis.jd_match_analysis.match_percentage)}%</strong></div><KeywordGroup title="Matched keywords" values={analysis.jd_match_analysis.matched_keywords} positive /><KeywordGroup title="Missing keywords" values={analysis.jd_match_analysis.missing_keywords} /></div>}<div className="feedback-grid"><article><p className="eyebrow">What works</p><h3>Resume strengths</h3>{(analysis.strengths || []).map((x) => <p className="check-line" key={x}><Check /> {x}</p>)}</article><article><p className="eyebrow">Priority fixes</p><h3>Issues to address</h3>{analysis.detailed_feedback.slice(0, 5).map((x) => <details key={x.issue_title}><summary>{x.issue_title}<ChevronRight /></summary><p>{x.explanation}</p><strong>{x.how_to_fix}</strong></details>)}</article></div></section>;
+  const validation = analysis.skill_validation_details;
+  const strengths = analysis.strengths?.length ? analysis.strengths : deriveStrengths(analysis.component_scores, labels, max);
+  const issues = analysis.detailed_feedback || [];
+  const priorityCounts = issues.reduce<Record<string, number>>((counts, issue) => {
+    const severity = issue.severity_level?.toLowerCase() || "low";
+    counts[severity] = (counts[severity] || 0) + 1;
+    return counts;
+  }, {});
+
+  return <section className="results report-results">
+    <header className="report-overview">
+      <div className="report-score">
+        <div className="score-ring" style={{ "--score": `${score * 3.6}deg` } as React.CSSProperties}><span><strong>{score}</strong><small>out of 100</small></span></div>
+      </div>
+      <div className="report-summary-copy">
+        <p className="report-kicker">ATS readiness report</p>
+        <h2>{score >= 80 ? "Strong foundation" : score >= 60 ? "Competitive with focused edits" : "Needs focused revision"}</h2>
+        <p>{analysis.interpretation || "Work through the recommendations in priority order, then run another scan before applying."}</p>
+        <div className="report-facts">
+          <span><strong>{issues.length}</strong> recommendations</span>
+          <span><strong>{validation?.validated_count || 0}</strong> validated skills</span>
+          {analysis.jd_match_analysis && <span><strong>{Math.round(analysis.jd_match_analysis.match_percentage)}%</strong> role match</span>}
+        </div>
+      </div>
+      <button className="button report-download" onClick={onDownload}><Download /> Download full report</button>
+    </header>
+
+    <section className="report-section score-section-web">
+      <ReportSectionHeading index="01" title="Score breakdown" copy="How each part of the resume contributes to the overall score." />
+      <div className="score-breakdown-list">
+        {Object.entries(analysis.component_scores).map(([key, value]) => {
+          const percentage = Math.min(100, value / (max[key] || 100) * 100);
+          return <article key={key}>
+            <div><strong>{labels[key] || key}</strong><span>{descriptions[key]}</span></div>
+            <div className="score-track"><i style={{ width: `${percentage}%` }} /></div>
+            <b>{Math.round(value)}<small>/{max[key] || 100}</small></b>
+          </article>;
+        })}
+      </div>
+    </section>
+
+    <div className="report-columns">
+      <section className="report-section strengths-section">
+        <ReportSectionHeading index="02" title="What is working" copy="Signals already helping your resume." />
+        <div className="strength-list">
+          {strengths.map((item) => <p key={item}><span><Check /></span>{item}</p>)}
+        </div>
+      </section>
+
+      <section className="report-section skill-section">
+        <ReportSectionHeading index="03" title="Skill evidence" copy="Claims cross-checked against projects and experience." />
+        <div className="skill-stats">
+          <div><strong>{validation?.total || analysis.skills?.length || 0}</strong><span>Total skills</span></div>
+          <div><strong>{validation?.validated_count || 0}</strong><span>Validated</span></div>
+          <div><strong>{validation?.unvalidated?.length || 0}</strong><span>Need evidence</span></div>
+        </div>
+        {!!validation?.validated?.length && <div className="evidence-list">
+          {validation.validated.slice(0, 8).map((item) => <div key={item.skill}><strong>{item.skill}</strong><span>{item.projects?.length ? item.projects.join(" · ") : "Evidence found in resume"}</span></div>)}
+        </div>}
+        {!!validation?.unvalidated?.length && <KeywordGroup title="Skills that need supporting context" values={validation.unvalidated} />}
+      </section>
+    </div>
+
+    {analysis.jd_match_analysis && <section className="report-section role-section">
+      <ReportSectionHeading index="04" title="Role match" copy="Language and capabilities compared with the supplied job description." />
+      <div className="role-layout">
+        <div className="match-score"><span>Overall match</span><strong>{Math.round(analysis.jd_match_analysis.match_percentage)}%</strong><small>{Math.round(analysis.jd_match_analysis.semantic_similarity * 100)}% semantic similarity</small></div>
+        <KeywordGroup title="Matched keywords" values={analysis.jd_match_analysis.matched_keywords} positive />
+        <KeywordGroup title="Missing keywords" values={analysis.jd_match_analysis.missing_keywords} />
+      </div>
+      {!!analysis.jd_match_analysis.skills_gap.length && <KeywordGroup title="Skills gap" values={analysis.jd_match_analysis.skills_gap} warning />}
+    </section>}
+
+    <section className="report-section recommendations-section">
+      <div className="recommendations-heading">
+        <ReportSectionHeading index={analysis.jd_match_analysis ? "05" : "04"} title="Recommendations" copy="Every detected issue, ordered by practical impact." />
+        <div className="priority-summary">
+          <span className="severity high">{priorityCounts.high || 0} high</span>
+          <span className="severity moderate">{(priorityCounts.moderate || 0) + (priorityCounts.medium || 0)} medium</span>
+          <span className="severity low">{(priorityCounts.low || 0) + (priorityCounts.info || 0)} low</span>
+        </div>
+      </div>
+      {issues.length ? <div className="recommendation-list">{issues.map((issue, index) => <article className={`recommendation-card severity-${issue.severity_level?.toLowerCase() || "low"}`} key={`${issue.issue_title}-${index}`}>
+        <header><span className={`severity ${severityClass(issue.severity_level)}`}>{issue.severity_level || "Low"}</span><div><small>Recommendation {String(index + 1).padStart(2, "0")}</small><h3>{issue.issue_title}</h3></div></header>
+        <p className="issue-explanation">{issue.explanation}</p>
+        <dl>
+          {issue.ats_impact && <div><dt>ATS impact</dt><dd>{issue.ats_impact}</dd></div>}
+          {issue.where_it_appears && <div><dt>Where it appears</dt><dd>{issue.where_it_appears}</dd></div>}
+        </dl>
+        <div className="fix-panel"><Lightbulb /><div><strong>How to fix it</strong><p>{issue.how_to_fix}</p></div></div>
+        {!!issue.action_items?.length && <div className="action-checklist"><strong>Action checklist</strong>{issue.action_items.map((item) => <p key={item}><span />{item}</p>)}</div>}
+        {issue.example_improvement && <div className="example-panel"><strong>Example improvement</strong><p>{issue.example_improvement}</p></div>}
+      </article>)}</div> : <div className="report-empty"><Award /><div><strong>No major issues detected</strong><p>Keep the resume tailored to each role and rescan after meaningful edits.</p></div></div>}
+    </section>
+  </section>;
 }
 
-function KeywordGroup({ title, values, positive = false }: { title: string; values: string[]; positive?: boolean }) { return <div className="keyword-group"><span>{title}</span><div>{values.slice(0, 10).map((x) => <i className={positive ? "positive" : ""} key={x}>{x}</i>)}</div></div>; }
+function ReportSectionHeading({ index, title, copy }: { index: string; title: string; copy: string }) { return <header className="report-section-heading"><span>{index}</span><div><h2>{title}</h2><p>{copy}</p></div></header>; }
+
+function deriveStrengths(scores: Record<string, number>, labels: Record<string, string>, maximums: Record<string, number>) { return Object.entries(scores).filter(([key, value]) => value / (maximums[key] || 100) >= .72).map(([key]) => `${labels[key] || key} is performing above the target benchmark`); }
+
+function severityClass(value: string) { const severity = value?.toLowerCase(); return severity === "high" ? "high" : severity === "moderate" || severity === "medium" ? "moderate" : "low"; }
+
+function KeywordGroup({ title, values, positive = false, warning = false }: { title: string; values: string[]; positive?: boolean; warning?: boolean }) { return <div className="keyword-group"><span>{title}</span><div>{values.map((x) => <i className={positive ? "positive" : warning ? "warning" : ""} key={x}>{x}</i>)}</div></div>; }
 
 function HistoryView({ token, onAnalyze }: { token: string; onAnalyze: () => void }) {
   const [items, setItems] = useState<HistoryItem[]>([]); const [busy, setBusy] = useState(true); const [error, setError] = useState("");
+  const [selected, setSelected] = useState<HistoryItem | null>(null);
   useEffect(() => {
     let active = true;
     getHistory(token)
@@ -135,7 +237,9 @@ function HistoryView({ token, onAnalyze }: { token: string; onAnalyze: () => voi
     return () => { active = false; };
   }, [token]);
   async function remove(id: string | number) { await deleteHistory(String(id), token); setItems((old) => old.filter((x) => x.id !== id)); }
-  return <section className="page"><PageHeading eyebrow="History" title="Previous resume analyses" copy="Review completed scans, compare score movement, and remove outdated reports." />{busy ? <div className="empty-state"><LoaderCircle className="spin" /> Loading reports</div> : error ? <p className="error-box">{error}</p> : items.length === 0 ? <div className="empty-state"><Clock3 /><h2>No reports yet</h2><p>Your completed resume analyses will appear here.</p><button className="button primary" onClick={onAnalyze}>Open analyzer</button></div> : <div className="history-list">{items.map((item) => <article key={item.id}><div className="file-icon"><FileSearch /></div><div><strong>{item.filename}</strong><span>{new Date(item.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}</span></div><div className="history-score"><strong>{Math.round(item.ats_score)}</strong><span>ATS score</span></div><button className="icon-button" onClick={() => remove(item.id)} aria-label={`Delete ${item.filename}`}><Trash2 /></button></article>)}</div>}</section>;
+  async function downloadSelected() { if (!selected) return; const blob = await downloadReport(selected.analysis_result, token); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${selected.filename.replace(/\.[^.]+$/, "")}-ats-report.pdf`; a.click(); URL.revokeObjectURL(url); }
+  if (selected) return <section className="page history-report"><button className="back-link" onClick={() => setSelected(null)}><ArrowLeft /> Back to history</button><PageHeading eyebrow="Saved report" title={selected.filename} copy={`Analyzed ${new Date(selected.created_at).toLocaleDateString(undefined, { dateStyle: "long" })}`} /><Results analysis={selected.analysis_result} onDownload={downloadSelected} /></section>;
+  return <section className="page"><PageHeading eyebrow="History" title="Previous resume analyses" copy="Review completed scans, compare score movement, and remove outdated reports." />{busy ? <div className="empty-state"><LoaderCircle className="spin" /> Loading reports</div> : error ? <p className="error-box">{error}</p> : items.length === 0 ? <div className="empty-state"><Clock3 /><h2>No reports yet</h2><p>Your completed resume analyses will appear here.</p><button className="button primary" onClick={onAnalyze}>Open analyzer</button></div> : <div className="history-list">{items.map((item) => <article key={item.id}><div className="file-icon"><FileSearch /></div><div><strong>{item.filename}</strong><span>{new Date(item.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}</span></div><div className="history-score"><strong>{Math.round(item.ats_score)}</strong><span>ATS score</span></div><button className="button history-view" onClick={() => setSelected(item)}>View report</button><button className="icon-button" onClick={() => remove(item.id)} aria-label={`Delete ${item.filename}`}><Trash2 /></button></article>)}</div>}</section>;
 }
 
 function ResourcesView({ onAnalyze }: { onAnalyze: () => void }) { const resources = [{ title: "ATS formatting checklist", text: "Use conventional headings, simple columns, and selectable text." }, { title: "Keyword matching guide", text: "Mirror role language naturally and prioritize recurring requirements." }, { title: "Evidence-first bullets", text: "Pair actions with scope, outcome, and a credible metric." }, { title: "Before you submit", text: "Check links, file naming, dates, and role-specific terminology." }]; return <section className="page"><PageHeading eyebrow="Resources" title="Build a resume that reads clearly" copy="Practical guidance for stronger ATS parsing and more convincing recruiter review." /><div className="resource-grid">{resources.map((x, i) => <article key={x.title}><span>0{i + 1}</span><h2>{x.title}</h2><p>{x.text}</p></article>)}</div><button className="button primary resource-cta" onClick={onAnalyze}>Analyze your resume <ArrowRight /></button></section>; }

@@ -107,6 +107,18 @@ async def analyze_resume(
         keyword_match=jd_comparison_result.match_percentage if jd_comparison_result else 0.0,
         missing_keywords=result.get('missing_keywords', []),
         matched_keywords=result.get('matched_keywords', []),
+        suggestions=[
+            item.get('how_to_fix', '') if isinstance(item, dict) else getattr(item, 'how_to_fix', '')
+            for item in detailed_fb
+            if (item.get('how_to_fix') if isinstance(item, dict) else getattr(item, 'how_to_fix', ''))
+        ],
+        strengths=result.get('strengths', []),
+        critical_issues=[
+            item.get('issue_title', '') if isinstance(item, dict) else getattr(item, 'issue_title', '')
+            for item in detailed_fb
+            if (item.get('severity_level', '') if isinstance(item, dict) else getattr(item, 'severity_level', '')).lower() == 'high'
+            and (item.get('issue_title') if isinstance(item, dict) else getattr(item, 'issue_title', ''))
+        ],
         skills=list(result.get('skills', [])[:20]),
         jd_comparison=jd_comparison_result,
         interpretation=result.get('interpretation', '')
@@ -165,13 +177,11 @@ async def generate_pdf(
     data: AnalysisResponse,
     user_id: str = Depends(get_current_user),
 ):
-    from backend.services.report_generator import generate_html_reports
-    from backend.services.pdf_export import generate_combined_pdf
+    from backend.services.pdf_export import generate_analysis_pdf
     from fastapi.responses import Response
 
     try:
-        html_docs = generate_html_reports(data.model_dump())
-        pdf_bytes = generate_combined_pdf(html_docs)
+        pdf_bytes = generate_analysis_pdf(data.model_dump())
 
         return Response(
             content=pdf_bytes,
@@ -191,8 +201,7 @@ async def generate_history_pdf(
     user_id: str = Depends(get_current_user),
 ):
     from backend.database.supabase_db import get_user_history
-    from backend.services.report_generator import generate_html_reports
-    from backend.services.pdf_export import generate_combined_pdf
+    from backend.services.pdf_export import generate_analysis_pdf
     from fastapi.responses import Response
 
     history = await get_user_history(user_id)
@@ -202,8 +211,7 @@ async def generate_history_pdf(
         raise HTTPException(status_code=404, detail="Analysis not found")
 
     try:
-        html_docs = generate_html_reports(analysis_data)
-        pdf_bytes = generate_combined_pdf(html_docs)
+        pdf_bytes = generate_analysis_pdf(analysis_data)
 
         return Response(
             content=pdf_bytes,

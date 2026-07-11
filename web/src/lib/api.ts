@@ -10,6 +10,7 @@ export type Analysis = {
     severity_level: string;
     ats_impact: string;
     explanation: string;
+    where_it_appears: string;
     how_to_fix: string;
     action_items: string[];
     example_improvement: string;
