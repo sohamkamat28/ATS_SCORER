@@ -31,24 +31,36 @@ export function ResumeLensApp() {
   useEffect(() => {
     let active = true;
     let unsubscribe: (() => void) | undefined;
+    // Session restoration can also wait on the auth client's cross-tab lock,
+    // before any fetch starts. Keep the public workspace usable in that case.
+    const startupTimeout = window.setTimeout(() => {
+      if (active) {
+        setAuthError("Account access is taking longer than expected. Please try signing in again.");
+        setAuthReady(true);
+      }
+    }, 20000);
     async function initializeAuth() {
       try {
         const supabase = getSupabase();
         const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-          if (active) { setSession(nextSession); setAuthReady(true); }
+          if (active) {
+            setSession(nextSession); setAuthReady(true);
+            if (nextSession) setAuthError("");
+          }
         });
         unsubscribe = () => data.subscription.unsubscribe();
         const result = await supabase.auth.getSession();
         if (result.error) throw result.error;
-        if (active) setSession(result.data.session);
+        if (active) { setSession(result.data.session); setAuthError(""); }
       } catch (error) {
         if (active) setAuthError(error instanceof Error ? error.message : "Could not load your account. Please try signing in again.");
       } finally {
+        window.clearTimeout(startupTimeout);
         if (active) setAuthReady(true);
       }
     }
     void initializeAuth();
-    return () => { active = false; unsubscribe?.(); };
+    return () => { active = false; window.clearTimeout(startupTimeout); unsubscribe?.(); };
   }, []);
 
   function navigate(next: View, needsAuth = false) {
