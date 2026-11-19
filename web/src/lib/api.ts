@@ -1,4 +1,13 @@
-export const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
+import { serviceFetch } from "./request.ts";
+
+export const API_URL = (process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "")).replace(/\/$/, "");
+
+export function validateResume(file: File) {
+  if (!/\.(pdf|docx?)$/i.test(file.name)) throw new Error("Choose a PDF, DOC, or DOCX resume.");
+  if (!file.size) throw new Error("This file is empty. Please choose your resume again.");
+  if (file.size > 5 * 1024 * 1024) throw new Error("Your resume must be 5 MB or smaller.");
+}
 
 export type Analysis = {
   ATS_score: number;
@@ -35,18 +44,23 @@ export type Analysis = {
 };
 
 async function apiFetch(path: string, token: string, init?: RequestInit) {
-  const response = await fetch(`${API_URL}${path}`, {
+  if (!API_URL) throw new Error("Resume analysis is not configured. Please contact the site owner.");
+  const response = await serviceFetch(`${API_URL}${path}`, {
     ...init,
     headers: { Authorization: `Bearer ${token}`, ...init?.headers },
-  });
+  }, "The resume analysis service", 120000);
   if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || `Request failed with status ${response.status}`);
+    if (response.status === 401) throw new Error("Your session has expired. Please sign out and sign in again.");
+    if (response.status >= 500) throw new Error("The resume analysis service is temporarily unavailable. Please try again in a moment.");
+    const payload = await response.json().catch(() => null);
+    const detail = payload?.detail;
+    throw new Error(typeof detail === "string" ? detail : `Request failed with status ${response.status}. Please try again.`);
   }
   return response;
 }
 
 export async function analyzeResume(file: File, jd: string, token: string): Promise<Analysis> {
+  validateResume(file);
   const body = new FormData();
   body.append("resume", file);
   body.append("job_description", jd);

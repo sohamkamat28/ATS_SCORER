@@ -7,7 +7,7 @@ import {
   Clock3, Download, FileSearch, History, Home, Lightbulb, LoaderCircle,
   LogIn, LogOut, Menu, Trash2, UploadCloud, X,
 } from "lucide-react";
-import { analyzeResume, deleteHistory, downloadReport, getHistory, type Analysis } from "@/lib/api";
+import { analyzeResume, deleteHistory, downloadReport, getHistory, validateResume, type Analysis } from "@/lib/api";
 import { getSupabase } from "@/lib/supabase";
 
 type View = "home" | "analyzer" | "history" | "resources" | "auth";
@@ -26,18 +26,29 @@ export function ResumeLensApp() {
   const [returnView, setReturnView] = useState<View>("home");
   const [mobileNav, setMobileNav] = useState(false);
   const [authReady, setAuthReady] = useState(false);
+  const [authError, setAuthError] = useState("");
 
   useEffect(() => {
-    const supabase = getSupabase();
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setAuthReady(true);
-    });
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      setAuthReady(true);
-    });
-    return () => data.subscription.unsubscribe();
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    async function initializeAuth() {
+      try {
+        const supabase = getSupabase();
+        const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+          if (active) { setSession(nextSession); setAuthReady(true); }
+        });
+        unsubscribe = () => data.subscription.unsubscribe();
+        const result = await supabase.auth.getSession();
+        if (result.error) throw result.error;
+        if (active) setSession(result.data.session);
+      } catch (error) {
+        if (active) setAuthError(error instanceof Error ? error.message : "Could not load your account. Please try signing in again.");
+      } finally {
+        if (active) setAuthReady(true);
+      }
+    }
+    void initializeAuth();
+    return () => { active = false; unsubscribe?.(); };
   }, []);
 
   function navigate(next: View, needsAuth = false) {
@@ -49,8 +60,13 @@ export function ResumeLensApp() {
   }
 
   async function signOut() {
-    await getSupabase().auth.signOut();
-    setView("home");
+    try {
+      const { error } = await getSupabase().auth.signOut();
+      if (error) throw error;
+      setView("home");
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "Could not sign out. Please try again.");
+    }
   }
 
   if (!authReady) return <div className="app-loader"><LoaderCircle className="spin" /> Loading workspace</div>;
@@ -65,12 +81,13 @@ export function ResumeLensApp() {
         <nav>
           {navigation.map((item) => <button key={item.id} className={view === item.id ? "active" : ""} onClick={() => navigate(item.id, item.protected)}><item.icon /><span>{item.label}</span></button>)}
         </nav>
-        <div className="workspace-note"><span /><small>Analysis engine</small><strong>Groq and Supabase connected</strong></div>
+        <div className="workspace-note"><small>Resume workspace</small><strong>Analysis, reports, and history</strong></div>
       </aside>
       {mobileNav && <button className="nav-scrim" onClick={() => setMobileNav(false)} aria-label="Close navigation" />}
       <main>
+        {authError && <p className="error-box" role="alert">{authError}</p>}
         {view === "home" && <HomeView session={session} onAnalyze={() => navigate("analyzer", true)} onAuth={() => { setReturnView("home"); setView("auth"); }} onSignOut={signOut} />}
-        {view === "auth" && <AuthView onBack={() => setView("home")} onSuccess={() => setView(returnView)} />}
+        {view === "auth" && <AuthView onBack={() => setView("home")} onSuccess={() => { setAuthError(""); setView(returnView); }} />}
         {view === "analyzer" && session && <AnalyzerView token={session.access_token} />}
         {view === "history" && session && <HistoryView token={session.access_token} onAnalyze={() => setView("analyzer")} />}
         {view === "resources" && <ResourcesView onAnalyze={() => navigate("analyzer", true)} />}
@@ -97,22 +114,49 @@ function AuthView({ onBack, onSuccess }: { onBack: () => void; onSuccess: () => 
   const [busy, setBusy] = useState(false); const [message, setMessage] = useState("");
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setBusy(true); setMessage("");
-    const auth = getSupabase().auth;
-    const result = mode === "signin" ? await auth.signInWithPassword({ email, password }) : await auth.signUp({ email, password });
-    setBusy(false);
-    if (result.error) return setMessage(result.error.message);
-    if (result.data.session) onSuccess(); else setMessage("Check your inbox to confirm your account.");
+    try {
+      const auth = getSupabase().auth;
+      const result = mode === "signin"
+        ? await auth.signInWithPassword({ email: email.trim(), password })
+        : await auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: window.location.origin } });
+      if (result.error) throw result.error;
+      if (result.data.session) onSuccess(); else setMessage("Check your inbox to confirm your account, then return here to sign in.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not access your account. Please try again.");
+    } finally {
+      setBusy(false);
+    }
   }
-  async function google() { await getSupabase().auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } }); }
-  return <section className="auth-page"><button className="back-link" onClick={onBack}><ArrowLeft /> Back to home</button><div className="auth-intro"><span className="auth-mark">RL</span><p className="eyebrow">ResumeLens account</p><h1>Sign in to continue</h1><p>Your reports and analysis history stay connected to your account.</p></div><div className="auth-card"><div className="tabs"><button className={mode === "signin" ? "active" : ""} onClick={() => setMode("signin")}>Sign in</button><button className={mode === "signup" ? "active" : ""} onClick={() => setMode("signup")}>Create account</button></div><form onSubmit={submit}><label>Email<input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" /></label><label>Password<input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" /></label>{message && <p className="form-message">{message}</p>}<button className="button primary full" disabled={busy}>{busy && <LoaderCircle className="spin" />}{mode === "signin" ? "Sign in" : "Create account"}</button></form><div className="divider"><span>or</span></div><button className="button secondary full" onClick={google}>Continue with Google</button></div></section>;
+  async function google() {
+    setBusy(true); setMessage("");
+    try {
+      const { error } = await getSupabase().auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
+      if (error) throw error;
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Google sign-in failed. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return <section className="auth-page"><button className="back-link" onClick={onBack}><ArrowLeft /> Back to home</button><div className="auth-intro"><span className="auth-mark">RL</span><p className="eyebrow">ResumeLens account</p><h1>{mode === "signin" ? "Sign in to continue" : "Create your account"}</h1><p>Your reports and analysis history stay connected to your account.</p></div><div className="auth-card"><div className="tabs"><button className={mode === "signin" ? "active" : ""} disabled={busy} onClick={() => { setMode("signin"); setMessage(""); }}>Sign in</button><button className={mode === "signup" ? "active" : ""} disabled={busy} onClick={() => { setMode("signup"); setMessage(""); }}>Create account</button></div><form onSubmit={submit}><label>Email<input type="email" autoComplete="email" required disabled={busy} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" /></label><label>Password<input type="password" autoComplete={mode === "signin" ? "current-password" : "new-password"} required disabled={busy} minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" /></label>{message && <p className="form-message" role="status">{message}</p>}<button className="button primary full" disabled={busy}>{busy && <LoaderCircle className="spin" />}{mode === "signin" ? "Sign in" : "Create account"}</button></form><div className="divider"><span>or</span></div><button className="button secondary full" disabled={busy} onClick={google}>Continue with Google</button></div></section>;
 }
 
 function AnalyzerView({ token }: { token: string }) {
   const [file, setFile] = useState<File | null>(null); const [jd, setJd] = useState("");
   const [analysis, setAnalysis] = useState<Analysis | null>(null); const [busy, setBusy] = useState(false); const [error, setError] = useState("");
-  async function run() { if (!file) return; setBusy(true); setError(""); try { setAnalysis(await analyzeResume(file, jd, token)); } catch (e) { setError(e instanceof Error ? e.message : "Analysis failed"); } finally { setBusy(false); } }
+  function chooseFile(nextFile: File | null) {
+    setError(""); setAnalysis(null);
+    try {
+      if (nextFile) validateResume(nextFile);
+      setFile(nextFile);
+    } catch (error) {
+      setFile(null);
+      setError(error instanceof Error ? error.message : "Please choose a valid resume.");
+    }
+  }
+  async function run() { if (!file || busy) return; setBusy(true); setError(""); try { setAnalysis(await analyzeResume(file, jd, token)); } catch (e) { setError(e instanceof Error ? e.message : "Analysis failed"); } finally { setBusy(false); } }
   async function download() { if (!analysis) return; const blob = await downloadReport(analysis, token); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "ats-resume-report.pdf"; a.click(); URL.revokeObjectURL(url); }
-  return <section className="page"><PageHeading eyebrow="Analyzer" title="Resume scoring workspace" copy="Upload a resume, add role context when available, and review a structured ATS readiness report." /><div className="analyzer-grid"><article className="upload-panel"><label className={`dropzone ${file ? "has-file" : ""}`}><UploadCloud /><strong>{file ? file.name : "Choose your resume"}</strong><span>{file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : "PDF or DOCX, up to 5 MB"}</span><input type="file" accept=".pdf,.doc,.docx" onChange={(e) => setFile(e.target.files?.[0] || null)} /></label><label className="field-label">Job description <span>Optional</span><textarea value={jd} onChange={(e) => setJd(e.target.value)} placeholder="Paste the role description for targeted matching..." /></label>{error && <p className="error-box">{error}</p>}<button className="button primary full" disabled={!file || busy} onClick={run}>{busy ? <><LoaderCircle className="spin" /> Analyzing resume</> : <><FileSearch /> Analyze resume</>}</button></article><aside className="analysis-guide"><p className="eyebrow">What gets checked</p><h2>A focused review across five signals.</h2>{["ATS-readable formatting", "Role and keyword coverage", "Evidence-backed skills", "Content quality and metrics", "Recruiter-ready recommendations"].map((x) => <p key={x}><Check /> {x}</p>)}</aside></div>{analysis && <Results analysis={analysis} onDownload={download} />}</section>;
+  return <section className="page"><PageHeading eyebrow="Analyzer" title="Resume scoring workspace" copy="Upload a resume, add role context when available, and review a structured ATS readiness report." /><div className="analyzer-grid"><article className="upload-panel"><label className={`dropzone ${file ? "has-file" : ""}`}><UploadCloud /><strong>{file ? file.name : "Choose your resume"}</strong><span>{file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : "PDF, DOC, or DOCX, up to 5 MB"}</span><input type="file" accept=".pdf,.doc,.docx" onChange={(e) => { chooseFile(e.target.files?.[0] || null); e.target.value = ""; }} /></label><label className="field-label">Job description <span>Optional</span><textarea value={jd} onChange={(e) => setJd(e.target.value)} placeholder="Paste the role description for targeted matching..." /></label>{error && <p className="error-box" role="alert">{error}</p>}<button className="button primary full" disabled={!file || busy} onClick={run}>{busy ? <><LoaderCircle className="spin" /> Analyzing resume</> : <><FileSearch /> Analyze resume</>}</button></article><aside className="analysis-guide"><p className="eyebrow">What gets checked</p><h2>A focused review across five signals.</h2>{["ATS-readable formatting", "Role and keyword coverage", "Evidence-backed skills", "Content quality and metrics", "Recruiter-ready recommendations"].map((x) => <p key={x}><Check /> {x}</p>)}</aside></div>{analysis && <Results analysis={analysis} onDownload={download} />}</section>;
 }
 
 function Results({ analysis, onDownload }: { analysis: Analysis; onDownload: () => void }) {
@@ -239,7 +283,7 @@ function HistoryView({ token, onAnalyze }: { token: string; onAnalyze: () => voi
   async function remove(id: string | number) { await deleteHistory(String(id), token); setItems((old) => old.filter((x) => x.id !== id)); }
   async function downloadSelected() { if (!selected) return; const blob = await downloadReport(selected.analysis_result, token); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `${selected.filename.replace(/\.[^.]+$/, "")}-ats-report.pdf`; a.click(); URL.revokeObjectURL(url); }
   if (selected) return <section className="page history-report"><button className="back-link" onClick={() => setSelected(null)}><ArrowLeft /> Back to history</button><PageHeading eyebrow="Saved report" title={selected.filename} copy={`Analyzed ${new Date(selected.created_at).toLocaleDateString(undefined, { dateStyle: "long" })}`} /><Results analysis={selected.analysis_result} onDownload={downloadSelected} /></section>;
-  return <section className="page"><PageHeading eyebrow="History" title="Previous resume analyses" copy="Review completed scans, compare score movement, and remove outdated reports." />{busy ? <div className="empty-state"><LoaderCircle className="spin" /> Loading reports</div> : error ? <p className="error-box">{error}</p> : items.length === 0 ? <div className="empty-state"><Clock3 /><h2>No reports yet</h2><p>Your completed resume analyses will appear here.</p><button className="button primary" onClick={onAnalyze}>Open analyzer</button></div> : <div className="history-list">{items.map((item) => <article key={item.id}><div className="file-icon"><FileSearch /></div><div><strong>{item.filename}</strong><span>{new Date(item.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}</span></div><div className="history-score"><strong>{Math.round(item.ats_score)}</strong><span>ATS score</span></div><button className="button history-view" onClick={() => setSelected(item)}>View report</button><button className="icon-button" onClick={() => remove(item.id)} aria-label={`Delete ${item.filename}`}><Trash2 /></button></article>)}</div>}</section>;
+  return <section className="page"><PageHeading eyebrow="History" title="Previous resume analyses" copy="Review completed scans, compare score movement, and remove outdated reports." />{busy ? <div className="empty-state"><LoaderCircle className="spin" /> Loading reports</div> : error ? <p className="error-box" role="alert">{error}</p> : items.length === 0 ? <div className="empty-state"><Clock3 /><h2>No reports yet</h2><p>Your completed resume analyses will appear here.</p><button className="button primary" onClick={onAnalyze}>Open analyzer</button></div> : <div className="history-list">{items.map((item) => <article key={item.id}><div className="file-icon"><FileSearch /></div><div><strong>{item.filename}</strong><span>{new Date(item.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}</span></div><div className="history-score"><strong>{Math.round(item.ats_score)}</strong><span>ATS score</span></div><button className="button history-view" onClick={() => setSelected(item)}>View report</button><button className="icon-button" onClick={() => remove(item.id)} aria-label={`Delete ${item.filename}`}><Trash2 /></button></article>)}</div>}</section>;
 }
 
 function ResourcesView({ onAnalyze }: { onAnalyze: () => void }) { const resources = [{ title: "ATS formatting checklist", text: "Use conventional headings, simple columns, and selectable text." }, { title: "Keyword matching guide", text: "Mirror role language naturally and prioritize recurring requirements." }, { title: "Evidence-first bullets", text: "Pair actions with scope, outcome, and a credible metric." }, { title: "Before you submit", text: "Check links, file naming, dates, and role-specific terminology." }]; return <section className="page"><PageHeading eyebrow="Resources" title="Build a resume that reads clearly" copy="Practical guidance for stronger ATS parsing and more convincing recruiter review." /><div className="resource-grid">{resources.map((x, i) => <article key={x.title}><span>0{i + 1}</span><h2>{x.title}</h2><p>{x.text}</p></article>)}</div><button className="button primary resource-cta" onClick={onAnalyze}>Analyze your resume <ArrowRight /></button></section>; }
