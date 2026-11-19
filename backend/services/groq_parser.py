@@ -8,7 +8,9 @@ from groq import Groq
 logger=logging.getLogger('ats_resume_scorer')
 
 
-GROQ_MODEL='llama-3.3-70b-versatile'
+# Groq retired llama-3.3-70b-versatile for Free/Developer accounts in August
+# 2026. Keep the replacement configurable for future provider migrations.
+GROQ_MODEL = os.getenv('GROQ_MODEL', '').strip() or 'openai/gpt-oss-120b'
 
 _client=None
 
@@ -84,7 +86,8 @@ def _call_groq(client:Groq, system_prompt:str, user_prompt:str)->str:
             {'role': 'user', 'content': user_prompt}
         ],
         temperature=0.0,
-        max_tokens=4096
+        max_completion_tokens=4096,
+        response_format={'type': 'json_object'},
     )
 
     return response.choices[0].message.content.strip()
@@ -104,7 +107,8 @@ def _try_parse_json(text: str) -> dict | None:
         cleaned = cleaned.strip()
 
     try:
-        return json.loads(cleaned)
+        result = json.loads(cleaned)
+        return result if isinstance(result, dict) else None
     except json.JSONDecodeError:
         return None
     

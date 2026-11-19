@@ -14,7 +14,7 @@ A web app that scores how well a resume matches a job description and returns ac
 - **Frontend:** Streamlit
 - **Backend:** FastAPI (Python)
 - **NLP:** spaCy (`en_core_web_md`), Sentence Transformers (`all-MiniLM-L6-v2`)
-- **LLM:** Groq API (Llama 3)
+- **LLM:** Groq API (`openai/gpt-oss-120b`, configurable with `GROQ_MODEL`)
 - **Auth + Database:** Supabase (email/password and Google OAuth)
 - **PDF report export:** WeasyPrint + Jinja2
 
@@ -149,6 +149,11 @@ when the Vercel frontend and Render API are healthy.
    values are embedded during the build.
 5. Check `<Render service URL>/api/v1/health`. Free services can take time to wake
    after inactivity. The web client allows up to two minutes for an API request.
+6. If an upload reaches the API but analysis returns a server error, inspect the
+   Render application logs. A `model_not_found` error means the configured Groq
+   model is unavailable. Set `GROQ_MODEL` to a currently supported model and
+   redeploy. The previous Llama 3.3 model was retired for Free/Developer accounts
+   on August 16, 2026; see [Groq's deprecation notice](https://console.groq.com/docs/deprecations).
 
 The web app displays account and API connection errors and validates file types,
 empty files, and the 5 MB upload limit before sending a resume. Run its regression

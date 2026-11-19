@@ -14,6 +14,8 @@ services:
         value: 3.12.11
       - key: SPACY_MODEL_PRIMARY
         value: en_core_web_sm
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_KEY
