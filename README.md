@@ -131,3 +131,26 @@ remains within free-tier memory and build constraints.
 
 After both services are live, add the Vercel URL to Supabase Authentication's Site URL
 and Redirect URLs. Future pushes to `main` update each service independently.
+
+### When signup, login, or uploads stop working
+
+The analyzer requires a valid Supabase session. If the configured Supabase project is
+unavailable, signup and login fail and the upload workspace cannot be opened, even
+when the Vercel frontend and Render API are healthy.
+
+1. Open the Supabase project dashboard and check whether the project is paused,
+   deleted, or needs restoring. Restore the existing project when possible to
+   preserve accounts and saved reports.
+2. Confirm that the project's API URL matches `NEXT_PUBLIC_SUPABASE_URL` in Vercel
+   and `SUPABASE_URL` in Render. If the project changed, update its matching public
+   key, backend database credentials, and token verification configuration too.
+3. Check Authentication's Site URL and Redirect URLs include the production site.
+4. Redeploy the Vercel frontend after changing any `NEXT_PUBLIC_*` value; these
+   values are embedded during the build.
+5. Check `<Render service URL>/api/v1/health`. Free services can take time to wake
+   after inactivity. The web client allows up to two minutes for an API request.
+
+The web app displays account and API connection errors and validates file types,
+empty files, and the 5 MB upload limit before sending a resume. Run its regression
+tests with Node.js 24 and `cd web && npm test`. Then run `npm run lint` and
+`npm run build` with the frontend environment variables configured.
