@@ -35,11 +35,12 @@ test("caller cancellation is preserved", async () => {
 });
 
 test("resume validation accepts supported formats and rejects empty, unsupported, and oversized files", () => {
-  for (const name of ["resume.PDF", "resume.doc", "resume.docx"]) {
+  for (const name of ["resume.PDF", "resume.docx"]) {
     assert.doesNotThrow(() => validateResume(new File(["resume"], name)));
   }
   assert.throws(() => validateResume(new File([], "resume.pdf")), /empty/);
-  assert.throws(() => validateResume(new File(["resume"], "resume.exe")), /PDF, DOC, or DOCX/);
+  assert.throws(() => validateResume(new File(["legacy resume"], "resume.doc")), /Convert legacy DOC/);
+  assert.throws(() => validateResume(new File(["resume"], "resume.exe")), /PDF or DOCX/);
   assert.throws(() => validateResume(new File([new Uint8Array(5 * 1024 * 1024 + 1)], "resume.pdf")), /5 MB/);
 });
 

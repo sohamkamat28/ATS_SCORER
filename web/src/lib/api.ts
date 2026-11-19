@@ -4,7 +4,7 @@ export const API_URL = (process.env.NEXT_PUBLIC_API_URL ||
   (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "")).replace(/\/$/, "");
 
 export function validateResume(file: File) {
-  if (!/\.(pdf|docx?)$/i.test(file.name)) throw new Error("Choose a PDF, DOC, or DOCX resume.");
+  if (!/\.(pdf|docx)$/i.test(file.name)) throw new Error("Choose a PDF or DOCX resume. Convert legacy DOC files before uploading.");
   if (!file.size) throw new Error("This file is empty. Please choose your resume again.");
   if (file.size > 5 * 1024 * 1024) throw new Error("Your resume must be 5 MB or smaller.");
 }
